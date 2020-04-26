@@ -18,6 +18,7 @@ const initialOption = [{
     choices: ["View All Employees", "View Employees by Department", "View Employees by Manager", "Add an Employee", "Remove an Employee", "Update Employee Role", "Update Employee Manager", "Exit"],
 }]
 
+// displays pleasing interface beginning
 function welcome() {
     console.log("\n")
     console.log("****************************************")
@@ -30,6 +31,7 @@ function welcome() {
     console.log("\n")
 };
 
+// declare function to get action
 function init() {
     inquirer.prompt(initialOption)
         .then((response) => {
@@ -50,7 +52,7 @@ function init() {
                     removeEmployee();
                     break;
                 case "Update Employee Role":
-                    console.log("Updating employee role");
+                    updateEmployeeRole();
                     break;
                 case "Update Employee Manager":
                     console.log("Updating employee manager");
@@ -65,13 +67,18 @@ function init() {
         })
 }
 
+// declare function to view all employees
 function viewAllEmployees() {
     console.log("\n");
     console.log("Viewing all employees...");
     console.log("\n");
+
+    // joining the three databases to show all relevant information
     var query = "SELECT first_name, last_name, title, salary, department_name, manager_id FROM employee JOIN role ON role_id = role.id JOIN department ON department_id = department.id";
     connection.query(query, function(err, res) {
         if (err) throw err;
+
+        // display response in table
         console.table(res);
         init();
     })
@@ -199,6 +206,50 @@ function addEmployee() {
                     })
                 })
         })
+    })
+}
+
+function updateEmployeeRole() {
+    var query = "SELECT first_name, last_name FROM employee";
+    connection.query(query, function(err, res) {
+        if (err) throw err;
+        var employeeArray = [];
+        for (var i = 0; i < res.length; i++) {
+            employeeArray.push(res[i].first_name + " " + res[i].last_name)
+        }
+        inquirer.prompt([{
+                type: "list",
+                name: "employeeRoleToUpdate",
+                message: "Whose role would you like to update?",
+                choices: employeeArray
+            }, {
+                type: "list",
+                name: "newRole",
+                message: "What role would you like to assign?",
+                choices: ["Sales Lead", "Salesperson", "Lead Engineer", "Software Engineer", "Accountant", "General Counsel", "Lawyer"]
+            }])
+            .then((response) => {
+
+                var firstNameToUpdate = response.employeeRoleToUpdate.split(" ")[0];
+                var lastNameToUpdate = response.employeeRoleToUpdate.split(" ")[1];
+                var updatedRole = response.newRole;
+
+                connection.query("SELECT * FROM role WHERE title = ?", updatedRole, function(err, roleName) {
+                    if (err) throw err;
+                    var newRoleId = roleName[0].id;
+                    console.log(newRoleId);
+                    connection.query("SELECT * FROM employee WHERE ?", [{ first_name: firstNameToUpdate }, { last_name: lastNameToUpdate }], function(err, employeeData) {
+                        if (err) throw err;
+                        console.log(employeeData[0].id);
+
+                        connection.query("UPDATE employee SET ? WHERE ?", [{ role_id: newRoleId }, { id: employeeData[0].id }], function(err, updateResponse) {
+                            if (err) throw err;
+                            console.log(firstNameToUpdate + " " + lastNameToUpdate + "\'s role updated");
+                            init();
+                        })
+                    })
+                })
+            })
     })
 }
 
