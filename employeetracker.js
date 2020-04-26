@@ -35,6 +35,8 @@ function welcome() {
 function init() {
     inquirer.prompt(initialOption)
         .then((response) => {
+
+            // define switch cases based on user input
             switch (response.initialOption) {
                 case "View All Employees":
                     viewAllEmployees();
@@ -84,13 +86,18 @@ function viewAllEmployees() {
     })
 }
 
+// declare function to view employees by department
 function viewEmployeesByDepartment() {
     console.log("\n");
     console.log("Viewing employees by department...");
     console.log("\n");
+
+    // query to get all departments in the department database
     var query = "SELECT department_name FROM department";
     connection.query(query, function(err, departmentData) {
         if (err) throw err;
+
+        // map the query results into an array to be passed into the inquirer prompt
         var departments = departmentData.map(ele => ele.department_name);
         inquirer.prompt([{
                 type: "list",
@@ -99,9 +106,13 @@ function viewEmployeesByDepartment() {
                 choices: departments
             }])
             .then((response) => {
+
+                // query databases based on inquirer answer
                 var departmentQuery = "SELECT first_name, last_name, title, salary FROM employee JOIN role ON role_id = role.id JOIN department ON department_id = department.id WHERE department.department_name = ?";
                 connection.query(departmentQuery, response.departmentChoice, function(err, resp) {
                     if (err) throw err;
+
+                    // display results in table and ask for desired action again
                     console.table(resp);
                     init();
                 })
@@ -109,11 +120,15 @@ function viewEmployeesByDepartment() {
     })
 }
 
-
+// declare function to remove employee
 function removeEmployee() {
+
+    // query employee database to get all current employees 
     var query = "SELECT first_name, last_name FROM employee";
     connection.query(query, function(err, res) {
         if (err) throw err;
+
+        // push query results into an array to be passed into inquirer prompt
         var employeeArray = [];
         for (var i = 0; i < res.length; i++) {
             employeeArray.push(res[i].first_name + " " + res[i].last_name)
@@ -125,13 +140,18 @@ function removeEmployee() {
                 choices: employeeArray
             })
             .then((response) => {
+                // split inquirer response into first name and last name
                 var employeeStringArray = response.employeeToRemove.split(" ");
+
+                // pass first name and last name into DELETE query
                 var deleteQuery = "DELETE FROM employee WHERE ? AND ?";
                 connection.query(deleteQuery, [{ first_name: employeeStringArray[0] }, { last_name: employeeStringArray[1] }], function(err, resp) {
                     if (err) throw err;
                     console.log("\n");
                     console.log("Removed " + employeeStringArray[0] + " " + employeeStringArray[1]);
                     console.log("----------------------------------------")
+
+                    // ask for desired action again
                     init();
                 })
             })
