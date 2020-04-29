@@ -44,9 +44,9 @@ VALUES
 ("Mike", "Chan", 2, 2),
 ("Ashley", "Rodriguez", 1, 2),
 ("Ron", "Erlih", 1, 1),
-("Harrison", "Fung", 1, 3),
-("Robert", "Han", 3, 1),
-("Simon", "Kong", 2, 1),
+("Harrison", "Fung", 1, 4),
+("Robert", "Han", 3, 4),
+("Simon", "Kong", 2, 4),
 ("Wayne", "Sun", 4, 4);
 
 INSERT INTO department (department_name)

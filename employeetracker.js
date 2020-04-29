@@ -45,7 +45,7 @@ function init() {
                     viewEmployeesByDepartment();
                     break;
                 case "View Employees by Manager":
-                    console.log("Viewing employees by manager");
+                    viewEmployeesByManager();
                     break;
                 case "Add an Employee":
                     addEmployee();
@@ -61,6 +61,7 @@ function init() {
                     break;
                 case "Exit":
                     console.log("Goodbye");
+                    connection.end();
                     break;
                 default:
                     console.log("Invalid Option");
@@ -76,7 +77,7 @@ function viewAllEmployees() {
     console.log("\n");
 
     // joining the three databases to show all relevant information
-    var query = "SELECT first_name, last_name, title, salary, department_name, manager_id FROM employee JOIN role ON role_id = role.id JOIN department ON department_id = department.id";
+    var query = "SELECT employee.id, first_name, last_name, title, salary, department_name, manager_id FROM employee JOIN role ON role_id = role.id JOIN department ON department_id = department.id";
     connection.query(query, function(err, res) {
         if (err) throw err;
 
@@ -88,9 +89,6 @@ function viewAllEmployees() {
 
 // declare function to view employees by department
 function viewEmployeesByDepartment() {
-    console.log("\n");
-    console.log("Viewing employees by department...");
-    console.log("\n");
 
     // query to get all departments in the department database
     var query = "SELECT department_name FROM department";
@@ -113,8 +111,48 @@ function viewEmployeesByDepartment() {
                     if (err) throw err;
 
                     // display results in table and ask for desired action again
+                    console.log("\n");
+                    console.log("Viewing employees by department...");
+                    console.log("\n");
+
                     console.table(resp);
                     init();
+                })
+            })
+    })
+}
+
+function viewEmployeesByManager() {
+
+    // query to get all employees in the employee database
+    var query = "SELECT first_name, last_name FROM employee";
+    connection.query(query, function(err, employeeData) {
+        if (err) throw err;
+
+        // map the query results into an array to be passed into the inquirer prompt
+        var employeeArray = employeeData.map(ele => ele.first_name + " " + ele.last_name);
+
+        inquirer.prompt([{
+                type: "list",
+                name: "managerToView",
+                message: "Which manager would you like to view?",
+                choices: employeeArray
+            }])
+            .then((response) => {
+
+                // query employee database to get the id of the manager 
+                connection.query("SELECT * FROM employee WHERE ?", [{ first_name: response.managerToView.split(" ")[0] }, { last_name: response.managerToView.split(" ")[0] }], function(err, id_data) {
+                    if (err) throw err;
+
+                    // query database for employees with manager id asked for
+                    connection.query("SELECt * FROM employee WHERE ?", { manager_id: id_data[0].id }, function(err, outputData) {
+                        if (err) throw err;
+                        console.log("\n");
+                        console.log("Viewing employees by manager...");
+                        console.log("\n");
+                        console.table(outputData);
+                        init();
+                    })
                 })
             })
     })
@@ -225,7 +263,6 @@ function addEmployee() {
                                 manager_id: managerId
                             }, function(err, insertResponse) {
                                 if (err) throw err;
-                                console.log(insertResponse.affectedRows);
 
                                 // ask for desired action again
                                 init();
@@ -265,14 +302,12 @@ function updateEmployeeRole() {
                 connection.query("SELECT * FROM role WHERE title = ?", updatedRole, function(err, roleName) {
                     if (err) throw err;
                     var newRoleId = roleName[0].id;
-                    console.log(newRoleId);
                     connection.query("SELECT * FROM employee WHERE ?", [{ first_name: firstNameToUpdate }, { last_name: lastNameToUpdate }], function(err, employeeData) {
                         if (err) throw err;
-                        console.log(employeeData[0].id);
-
                         connection.query("UPDATE employee SET ? WHERE ?", [{ role_id: newRoleId }, { id: employeeData[0].id }], function(err, updateResponse) {
                             if (err) throw err;
                             console.log(firstNameToUpdate + " " + lastNameToUpdate + "\'s role updated");
+                            // ask for desired action again
                             init();
                         })
                     })
@@ -281,7 +316,10 @@ function updateEmployeeRole() {
     })
 }
 
+// declare function to update manager
 function updateEmployeeManager() {
+
+    // query database to get all employees for use in inquirer prompt
     var query = "SELECT first_name, last_name FROM employee";
     connection.query(query, function(err, res) {
         if (err) throw err;
@@ -301,21 +339,29 @@ function updateEmployeeManager() {
                 choices: employeeArray
             }])
             .then((response) => {
+
+                // split employee to be updated into first name and last name
                 var employeeManagerToBeUpdated = response.employeeManagerToUpdate.split(" ");
+
+                // split manager to be assigned into first name and last name
                 var newManager = response.newManager.split(" ");
 
-
+                // query employee database to get the id of the manager to be assigned
                 connection.query("SELECT * FROM employee WHERE ?", [{ first_name: newManager[0] }, { last_name: newManager[1] }], function(err, resp) {
                     if (err) throw err;
-                    console.log(resp[0].id);
+
+                    // update employee database with the manager id
+                    connection.query("UPDATE employee SET ? WHERE ? AND ?", [{ manager_id: resp[0].id }, { first_name: employeeManagerToBeUpdated[0] }, { last_name: employeeManagerToBeUpdated[1] }], function(err, updateResponse) {
+                        if (err) throw err;
+                        console.log(employeeManagerToBeUpdated[0] + " " + employeeManagerToBeUpdated[1] + "\'s manager updated");
+
+                        // ask for desired action again
+                        init();
+                    })
                 })
-
-                // connection.query("UPDATE employee SET ? WHERE ?", [{ manager_id: }, { first_name: employeeManagerToBeUpdated[0], last_name: employeeManagerToBeUpdated[1] }])
             })
-
     })
 }
-
 
 
 welcome();
